@@ -16,7 +16,7 @@
 
 Name:           gamescope
 Version:        3.16.23
-Release:        2.dwm_titus%{?dist}
+Release:        3.dwm_titus%{?dist}
 Summary:        Micro-compositor for video games on Wayland
 # Automatically converted from old format: BSD - review is highly recommended.
 License:        LicenseRef-Callaway-BSD
@@ -62,7 +62,9 @@ BuildRequires:  (pkgconfig(libliftoff) >= %{libliftoff_minver} with pkgconfig(li
 BuildRequires:  pkgconfig(libpipewire-0.3)
 BuildRequires:  pkgconfig(libudev)
 BuildRequires:  pkgconfig(luajit)
+%if 0%{?fedora} >= 44
 BuildRequires:  pkgconfig(openvr) >= 2.12
+%endif
 BuildRequires:  pkgconfig(sdl2)
 BuildRequires:  pkgconfig(vulkan)
 BuildRequires:  pkgconfig(wayland-protocols) >= 1.17
@@ -127,7 +129,11 @@ export PKG_CONFIG_PATH=pkgconfig
     -Ddrm_backend=enabled \
     -Denable_gamescope=true \
     -Denable_gamescope_wsi_layer=true \
+%if 0%{?fedora} >= 44
     -Denable_openvr_support=true \
+%else
+    -Denable_openvr_support=false \
+%endif
     -Dforce_fallback_for=[] \
     -Dinput_emulation=enabled \
     -Dpipewire=enabled \
@@ -151,6 +157,9 @@ export PKG_CONFIG_PATH=pkgconfig
 %{_datadir}/vulkan/implicit_layer.d/VkLayer_FROG_gamescope_wsi.*.json
 
 %changelog
+* Sun Jul 12 2026 Titus Techera <titus@christitus.com> - 3.16.23-3.dwm_titus
+- Disable OpenVR integration on Fedora 43, where openvr-devel is unavailable
+
 * Sun Jul 12 2026 Titus Techera <titus@christitus.com> - 3.16.23-2.dwm_titus
 - Backport upstream SDL backend thread shutdown fix (PR #2246)
 
