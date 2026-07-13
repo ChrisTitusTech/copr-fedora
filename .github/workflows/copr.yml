@@ -45,7 +45,7 @@ jobs:
         run: python3 -m unittest discover -s tests -v
 
       - name: Validate package definitions
-        run: python3 scripts/copr.py validate --all
+        run: python3 scripts/copr_automation.py validate --all
 
   publish:
     name: Publish to COPR
@@ -70,6 +70,7 @@ jobs:
         run: dnf -y install copr-cli git make python3 python3-copr rpm-build rpmdevtools
 
       - name: Publish packages
+        shell: bash
         env:
           BEFORE_SHA: ${{ github.event.before }}
           HEAD_SHA: ${{ github.sha }}
@@ -84,10 +85,10 @@ jobs:
 
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             if [[ "$REQUESTED_PACKAGE" == "all" ]]; then
-              python3 scripts/copr.py publish --all
+              python3 scripts/copr_automation.py publish --all
             else
-              python3 scripts/copr.py publish --package "$REQUESTED_PACKAGE"
+              python3 scripts/copr_automation.py publish --package "$REQUESTED_PACKAGE"
             fi
           else
-            python3 scripts/copr.py publish --changed-from "$BEFORE_SHA" --head "$HEAD_SHA"
+            python3 scripts/copr_automation.py publish --changed-from "$BEFORE_SHA" --head "$HEAD_SHA"
           fi

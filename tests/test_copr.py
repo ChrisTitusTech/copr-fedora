@@ -16,7 +16,9 @@ from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location("copr_automation", ROOT / "scripts" / "copr.py")
+SPEC = importlib.util.spec_from_file_location(
+    "copr_automation", ROOT / "scripts" / "copr_automation.py"
+)
 assert SPEC and SPEC.loader
 copr = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = copr

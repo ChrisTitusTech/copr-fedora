@@ -45,7 +45,7 @@ To add a package:
 
    ```bash
    sudo dnf install git make python3 rpm-build rpmdevtools rpmlint
-   python3 scripts/copr.py validate --package <name>
+   python3 scripts/copr_automation.py validate --package <name>
    ```
 
 5. Open a pull request. The credential-free validation job runs unit tests, parses every spec, downloads URL sources, and creates source RPMs.

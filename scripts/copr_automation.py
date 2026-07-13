@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Validate package recipes and publish them to Fedora COPR."""
+"""Validate package recipes and publish them to Fedora COPR.
+
+The filename intentionally differs from the installed ``copr`` Python package.
+"""
 
 from __future__ import annotations
 
@@ -373,7 +376,7 @@ def load_copr_client(config_path: str | None) -> tuple[Any, type[BaseException],
     try:
         from copr.v3 import Client, CoprNoResultException, wait
     except ImportError as exc:
-        raise CoprAutomationError("python3-copr is required for publishing") from exc
+        raise CoprAutomationError(f"cannot import python3-copr: {exc}") from exc
     return Client.create_from_config_file(config_path), CoprNoResultException, wait
 
 
