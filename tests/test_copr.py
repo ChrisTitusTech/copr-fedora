@@ -274,6 +274,28 @@ class CoprAutomationTests(unittest.TestCase):
             )
             self.assertEqual(len(list(output_dir.glob("hello-*.src.rpm"))), 1)
 
+    @unittest.skipUnless(
+        shutil.which("rpmbuild") and shutil.which("spectool") and shutil.which("make"),
+        "RPM build tools are required",
+    )
+    def test_build_srpm_does_not_modify_package_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            package_dir = Path(directory) / "hello"
+            source_dir = Path(directory) / "hello-1.0"
+            package_dir.mkdir()
+            source_dir.mkdir()
+            shutil.copy(ROOT / "tests" / "fixtures" / "hello" / "hello.spec", package_dir)
+            (source_dir / "README").write_text("hello\n", encoding="utf-8")
+            with tarfile.open(package_dir / "hello-1.0.tar.gz", "w:gz") as archive:
+                archive.add(source_dir, arcname="hello-1.0")
+            before = {path.name for path in package_dir.iterdir()}
+            package = copr.PackageDefinition("hello", package_dir, package_dir / "hello.spec")
+
+            result = copr.build_srpm(package)
+
+            self.assertRegex(result.name, r"^hello-1\.0-1(?:\.[^.]+)?\.src\.rpm$")
+            self.assertEqual({path.name for path in package_dir.iterdir()}, before)
+
 
 if __name__ == "__main__":
     unittest.main()

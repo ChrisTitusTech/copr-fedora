@@ -1,0 +1,43 @@
+From 191c7920ff04f7a92011cc2259b1a5c3e291839b Mon Sep 17 00:00:00 2001
+From: fnrir <fnr1r0@protonmail.com>
+Date: Thu, 9 Jul 2026 14:01:03 +0200
+Subject: [PATCH] SDLBackend: fix abort caused by dropping thread
+
+---
+ src/Backends/SDLBackend.cpp | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/src/Backends/SDLBackend.cpp b/src/Backends/SDLBackend.cpp
+index 87bde7e2f1..58af15093b 100644
+--- a/src/Backends/SDLBackend.cpp
++++ b/src/Backends/SDLBackend.cpp
+@@ -133,6 +133,7 @@ namespace gamescope
+ 	{
+ 	public:
+ 		CSDLBackend();
++		~CSDLBackend();
+ 
+ 		/////////////
+ 		// IBackend
+@@ -398,6 +399,13 @@ namespace gamescope
+ 	{
+ 	}
+ 
++	CSDLBackend::~CSDLBackend() {
++		SDL_Event event = { .type = SDL_QUIT };
++		SDL_PushEvent(&event);
++		if (m_SDLThread.joinable())
++			m_SDLThread.join();
++	}
++
+ 	bool CSDLBackend::Init()
+ 	{
+ 		m_eSDLInit.wait( SDLInitState::SDLInit_Waiting );
+@@ -649,6 +657,7 @@ namespace gamescope
+ 
+ 			switch( event.type )
+ 			{
++				case SDL_QUIT: return;
+ 				case SDL_CLIPBOARDUPDATE:
+ 				{
+ 					char *pClipBoard = SDL_GetClipboardText();

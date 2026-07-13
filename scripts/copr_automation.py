@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -198,16 +199,21 @@ def run_rpmlint(package: PackageDefinition) -> None:
 
 def build_srpm(package: PackageDefinition, makefile: Path = SRPM_MAKEFILE) -> Path:
     with tempfile.TemporaryDirectory(prefix=f"copr-{package.name}-") as temp_dir:
+        temp_root = Path(temp_dir)
+        work_dir = temp_root / package.name
+        output_dir = temp_root / "output"
+        shutil.copytree(package.directory, work_dir)
+        output_dir.mkdir()
         command = [
             "make",
             "-f",
             str(makefile),
             "srpm",
-            f"outdir={temp_dir}",
-            f"spec={package.spec}",
+            f"outdir={output_dir}",
+            f"spec={package.spec.name}",
         ]
         try:
-            subprocess.run(command, cwd=package.directory, check=True)
+            subprocess.run(command, cwd=work_dir, check=True)
         except FileNotFoundError as exc:
             raise CoprAutomationError("make is required for SRPM validation") from exc
         except subprocess.CalledProcessError as exc:
@@ -215,7 +221,7 @@ def build_srpm(package: PackageDefinition, makefile: Path = SRPM_MAKEFILE) -> Pa
                 f"SRPM validation failed for {package.name} with exit code {exc.returncode}"
             ) from exc
 
-        srpms = list(Path(temp_dir).glob("*.src.rpm"))
+        srpms = list(output_dir.glob("*.src.rpm"))
         if len(srpms) != 1:
             raise CoprAutomationError(
                 f"expected one SRPM for {package.name}, found {len(srpms)}"
