@@ -1,0 +1,5 @@
+__pycache__/
+*.py[cod]
+*.src.rpm
+.pytest_cache/
+.env

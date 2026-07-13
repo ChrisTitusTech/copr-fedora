@@ -1,0 +1,11 @@
+[project]
+name = "copr-fedora"
+chroots = ["fedora-43-x86_64", "fedora-44-x86_64"]
+description = "Community Fedora RPM packages maintained by ChrisTitusTech"
+instructions = "Enable this repository with: sudo dnf copr enable <owner>/copr-fedora"
+homepage = "https://github.com/ChrisTitusTech/copr-fedora"
+
+[repository]
+clone_url = "https://github.com/ChrisTitusTech/copr-fedora.git"
+branch = "main"
+
