@@ -245,8 +245,15 @@ def changed_package_names(base: str, head: str = "HEAD") -> list[str] | None:
     command = ["git", "diff", "--name-status", "--find-renames", base, head, "--"]
     try:
         result = subprocess.run(command, cwd=ROOT, check=True, capture_output=True, text=True)
-    except (FileNotFoundError, subprocess.CalledProcessError) as exc:
-        raise CoprAutomationError(f"cannot calculate changed packages for {base}..{head}") from exc
+    except FileNotFoundError as exc:
+        raise CoprAutomationError("git is required to calculate changed packages") from exc
+    except subprocess.CalledProcessError as exc:
+        details = exc.stderr.strip() or exc.stdout.strip() or "Git history is unavailable"
+        print(
+            f"warning: cannot calculate {base}..{head} ({details}); publishing all packages",
+            file=sys.stderr,
+        )
+        return None
 
     changed: set[str] = set()
     for line in result.stdout.splitlines():

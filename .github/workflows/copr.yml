@@ -33,13 +33,13 @@ jobs:
     runs-on: ubuntu-latest
     container: fedora:44
     steps:
+      - name: Install validation tools
+        run: dnf -y install git make python3 rpm-build rpmdevtools rpmlint
+
       - name: Check out repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
-
-      - name: Install validation tools
-        run: dnf -y install git make python3 rpm-build rpmdevtools rpmlint
 
       - name: Run unit tests
         run: python3 -m unittest discover -s tests -v
@@ -61,13 +61,13 @@ jobs:
       COPR_CONFIG: ${{ secrets.COPR_CONFIG }}
       COPR_OWNER: ${{ vars.COPR_OWNER }}
     steps:
+      - name: Install COPR client
+        run: dnf -y install copr-cli git make python3 python3-copr rpm-build rpmdevtools
+
       - name: Check out repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
-
-      - name: Install COPR client
-        run: dnf -y install copr-cli git make python3 python3-copr rpm-build rpmdevtools
 
       - name: Publish packages
         shell: bash

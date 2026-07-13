@@ -178,6 +178,17 @@ class CoprAutomationTests(unittest.TestCase):
         with mock.patch.object(copr.subprocess, "run", return_value=diff):
             self.assertIsNone(copr.changed_package_names("a" * 40, "b" * 40))
 
+    def test_unavailable_git_range_rebuilds_all_packages(self) -> None:
+        failure = subprocess.CalledProcessError(
+            returncode=128,
+            cmd=["git", "diff"],
+            stderr="fatal: not a git repository",
+        )
+        errors = io.StringIO()
+        with mock.patch.object(copr.subprocess, "run", side_effect=failure), redirect_stderr(errors):
+            self.assertIsNone(copr.changed_package_names("a" * 40, "b" * 40))
+        self.assertIn("publishing all packages", errors.getvalue())
+
     def test_publish_binds_build_proxy_before_waiting(self) -> None:
         build = SimpleNamespace(id=7, state="pending")
         completed = SimpleNamespace(id=7, state="succeeded")
