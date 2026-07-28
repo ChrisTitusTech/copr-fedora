@@ -15,10 +15,11 @@ This checklist tracks the initial repository implementation. A task is complete 
 - [x] Run local validation.
   - Acceptance: unit tests, package validation, Python compilation, and repository diff checks pass.
 
-## Operator activation
+## Package operations
 
-- [ ] Add the `COPR_OWNER` Actions variable and `COPR_CONFIG` Actions secret.
-- [ ] Push the repository to `main` and confirm the workflow creates or verifies the public project.
-- [ ] Add the first real package and confirm both configured Fedora builds succeed.
-
-Remote acceptance remains intentionally separate because it requires the repository owner's COPR credentials. The repository implementation was validated with 15 unit/integration tests, a real fixture SRPM build, Python bytecode compilation, and `actionlint` with ShellCheck integration.
+- [x] Configure `COPR_OWNER` and `COPR_CONFIG` and activate publication.
+- [x] Publish real packages successfully on both configured Fedora chroots.
+- [ ] Publish `github-copilot-installer` from its immutable external SCM tag.
+  - Acceptance: validation builds the external SRPM and both Fedora 43 and
+    Fedora 44 x86_64 COPR builds succeed without proprietary application
+    artifacts.

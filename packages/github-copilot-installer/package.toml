@@ -1,0 +1,5 @@
+[scm]
+clone_url = "https://github.com/ChrisTitusTech/fedora-copilot.git"
+committish = "v0.1.0"
+subdirectory = "packaging"
+spec = "github-copilot-installer.spec"

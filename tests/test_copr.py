@@ -51,6 +51,66 @@ class CoprAutomationTests(unittest.TestCase):
             with self.assertRaisesRegex(copr.CoprAutomationError, "wrong.spec"):
                 copr.discover_packages(["wrong"], packages)
 
+    def test_external_package_manifest_is_discovered(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            packages = Path(directory)
+            package_dir = packages / "external"
+            package_dir.mkdir()
+            (package_dir / "package.toml").write_text(
+                """
+[scm]
+clone_url = "https://github.com/example/external.git"
+committish = "v1.0.0"
+subdirectory = "packaging"
+spec = "external.spec"
+""".strip(),
+                encoding="utf-8",
+            )
+
+            package = copr.discover_packages(["external"], packages)[0]
+
+            self.assertIsNotNone(package.scm_source)
+            assert package.scm_source
+            self.assertEqual(package.scm_source.committish, "v1.0.0")
+            self.assertEqual(package.scm_source.subdirectory, "packaging")
+
+    def test_external_package_rejects_credentialed_clone_url(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            manifest = Path(directory) / "package.toml"
+            manifest.write_text(
+                """
+[scm]
+clone_url = "https://user:secret@example.invalid/repo.git"
+committish = "v1.0.0"
+subdirectory = "packaging"
+spec = "external.spec"
+""".strip(),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(copr.CoprAutomationError, "credential-free"):
+                copr.load_scm_source(manifest, "external")
+
+    def test_external_package_cannot_also_contain_spec(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            packages = Path(directory)
+            package_dir = packages / "external"
+            package_dir.mkdir()
+            (package_dir / "external.spec").touch()
+            (package_dir / "package.toml").write_text(
+                """
+[scm]
+clone_url = "https://github.com/example/external.git"
+committish = "v1.0.0"
+subdirectory = "packaging"
+spec = "external.spec"
+""".strip(),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(copr.CoprAutomationError, "cannot also contain"):
+                copr.discover_packages(["external"], packages)
+
     def test_invalid_package_name_is_rejected(self) -> None:
         with self.assertRaises(copr.CoprAutomationError):
             copr.validate_package_name("../escape")
@@ -148,6 +208,64 @@ class CoprAutomationTests(unittest.TestCase):
 
         client.package_proxy.edit.assert_called_once()
         client.package_proxy.add.assert_not_called()
+
+    def test_external_package_source_uses_manifest_values(self) -> None:
+        package = copr.PackageDefinition(
+            "external",
+            ROOT / "packages" / "external",
+            ROOT / "packages" / "external" / "external.spec",
+            copr.ScmSource(
+                "https://github.com/example/external.git",
+                "v1.2.3",
+                "packaging",
+                "external.spec",
+            ),
+        )
+
+        source = copr.package_source(copr.load_project_config(), package)
+
+        self.assertEqual(source["clone_url"], "https://github.com/example/external.git")
+        self.assertEqual(source["committish"], "v1.2.3")
+        self.assertEqual(source["subdirectory"], "packaging")
+        self.assertEqual(source["spec"], "external.spec")
+        self.assertFalse(source["webhook_rebuild"])
+
+    def test_clone_scm_source_fetches_raw_commit(self) -> None:
+        source = copr.ScmSource(
+            "https://github.com/example/external.git",
+            "a" * 40,
+            "packaging",
+            "external.spec",
+        )
+
+        with mock.patch.object(copr.subprocess, "run") as run:
+            copr.clone_scm_source(source, Path("/tmp/checkout"), "external")
+
+        commands = [call.args[0] for call in run.call_args_list]
+        self.assertEqual(commands[0][:3], ["git", "init", "--quiet"])
+        self.assertIn("fetch", commands[2])
+        self.assertIn("--depth", commands[2])
+        self.assertEqual(commands[-1][-2:], ["--detach", "FETCH_HEAD"])
+
+    def test_clone_scm_source_retries_commit_without_depth(self) -> None:
+        source = copr.ScmSource(
+            "https://github.com/example/external.git",
+            "b" * 40,
+            "packaging",
+            "external.spec",
+        )
+        shallow_failure = subprocess.CalledProcessError(128, ["git", "fetch"])
+
+        with mock.patch.object(
+            copr.subprocess,
+            "run",
+            side_effect=[None, None, shallow_failure, None, None],
+        ) as run:
+            copr.clone_scm_source(source, Path("/tmp/checkout"), "external")
+
+        retry = run.call_args_list[3].args[0]
+        self.assertIn("fetch", retry)
+        self.assertNotIn("--depth", retry)
 
     def test_failed_build_is_an_error(self) -> None:
         build = SimpleNamespace(id=42, state="pending")
