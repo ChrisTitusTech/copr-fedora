@@ -19,7 +19,10 @@ This checklist tracks the initial repository implementation. A task is complete 
 
 - [x] Configure `COPR_OWNER` and `COPR_CONFIG` and activate publication.
 - [x] Publish real packages successfully on both configured Fedora chroots.
-- [ ] Publish `github-copilot-installer` from its immutable external SCM tag.
+- [x] Publish `github-copilot-installer` from its immutable external SCM tag.
   - Acceptance: validation builds the external SRPM and both Fedora 43 and
     Fedora 44 x86_64 COPR builds succeed without proprietary application
     artifacts.
+  - Validation: immutable tag `v0.1.1` produced COPR build 10781232; both
+    configured chroots succeeded and the installed noarch helper contains
+    only the MIT-licensed installer, documentation, and manual page.
