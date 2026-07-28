@@ -25,6 +25,8 @@ PROJECT_FILE = ROOT / ".copr" / "project.toml"
 PACKAGES_DIR = ROOT / "packages"
 SRPM_MAKEFILE = ROOT / ".copr" / "Makefile"
 PACKAGE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9+._-]*$")
+COMMITTISH_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]*$")
+COMMIT_SHA_RE = re.compile(r"^[0-9a-fA-F]{40,64}$")
 ZERO_SHA_RE = re.compile(r"^0+$")
 MANAGED_PATHS = (
     ".copr/",
@@ -49,10 +51,19 @@ class ProjectConfig:
 
 
 @dataclass(frozen=True)
+class ScmSource:
+    clone_url: str
+    committish: str
+    subdirectory: str
+    spec: str
+
+
+@dataclass(frozen=True)
 class PackageDefinition:
     name: str
     directory: Path
     spec: Path
+    scm_source: ScmSource | None = None
 
 
 def _required_string(table: dict[str, Any], key: str, section: str) -> str:
@@ -98,6 +109,44 @@ def validate_package_name(name: str) -> str:
     return name
 
 
+def load_scm_source(path: Path, package_name: str) -> ScmSource:
+    try:
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError) as exc:
+        raise CoprAutomationError(f"cannot read {path}: {exc}") from exc
+
+    scm = data.get("scm")
+    if not isinstance(scm, dict):
+        raise CoprAutomationError(f"{path} requires an [scm] table")
+
+    clone_url = _required_string(scm, "clone_url", "scm")
+    parsed_url = urlparse(clone_url)
+    if (
+        parsed_url.scheme.lower() != "https"
+        or not parsed_url.netloc
+        or parsed_url.username
+        or parsed_url.password
+    ):
+        raise CoprAutomationError(f"{path} requires a credential-free HTTPS clone_url")
+
+    committish = _required_string(scm, "committish", "scm")
+    if not COMMITTISH_RE.fullmatch(committish) or ".." in committish:
+        raise CoprAutomationError(f"{path} has an invalid scm.committish")
+
+    subdirectory = _required_string(scm, "subdirectory", "scm")
+    subdirectory_path = Path(subdirectory)
+    if subdirectory_path.is_absolute() or ".." in subdirectory_path.parts:
+        raise CoprAutomationError(f"{path} has an unsafe scm.subdirectory")
+
+    spec = _required_string(scm, "spec", "scm")
+    if Path(spec).name != spec or spec != f"{package_name}.spec":
+        raise CoprAutomationError(
+            f"{path} scm.spec must be {package_name}.spec without a directory"
+        )
+
+    return ScmSource(clone_url, committish, subdirectory, spec)
+
+
 def discover_packages(
     names: Iterable[str] | None = None,
     packages_dir: Path = PACKAGES_DIR,
@@ -116,12 +165,22 @@ def discover_packages(
 
         expected_spec = directory / f"{name}.spec"
         specs = sorted(directory.glob("*.spec"))
-        if specs != [expected_spec]:
+        manifest = directory / "package.toml"
+        if manifest.is_file():
+            if specs:
+                found = ", ".join(path.name for path in specs)
+                raise CoprAutomationError(
+                    f"{directory} external SCM recipe cannot also contain specs: {found}"
+                )
+            source = load_scm_source(manifest, name)
+            packages.append(PackageDefinition(name, directory, expected_spec, source))
+        elif specs != [expected_spec]:
             found = ", ".join(path.name for path in specs) or "none"
             raise CoprAutomationError(
-                f"{directory} must contain exactly {name}.spec; found: {found}"
+                f"{directory} must contain exactly {name}.spec or package.toml; found: {found}"
             )
-        packages.append(PackageDefinition(name, directory, expected_spec))
+        else:
+            packages.append(PackageDefinition(name, directory, expected_spec))
     return packages
 
 
@@ -229,8 +288,141 @@ def build_srpm(package: PackageDefinition, makefile: Path = SRPM_MAKEFILE) -> Pa
         return Path(srpms[0].name)
 
 
+def clone_scm_source(source: ScmSource, checkout: Path, package_name: str) -> None:
+    try:
+        if COMMIT_SHA_RE.fullmatch(source.committish):
+            subprocess.run(["git", "init", "--quiet", str(checkout)], check=True)
+            subprocess.run(
+                ["git", "-C", str(checkout), "remote", "add", "origin", source.clone_url],
+                check=True,
+            )
+            try:
+                subprocess.run(
+                    [
+                        "git",
+                        "-C",
+                        str(checkout),
+                        "fetch",
+                        "--depth",
+                        "1",
+                        "origin",
+                        source.committish,
+                    ],
+                    check=True,
+                )
+            except subprocess.CalledProcessError:
+                # Some Git hosts reject shallow fetches by raw object ID.
+                subprocess.run(
+                    [
+                        "git",
+                        "-C",
+                        str(checkout),
+                        "fetch",
+                        "origin",
+                        source.committish,
+                    ],
+                    check=True,
+                )
+            subprocess.run(
+                ["git", "-C", str(checkout), "checkout", "--quiet", "--detach", "FETCH_HEAD"],
+                check=True,
+            )
+        else:
+            subprocess.run(
+                [
+                    "git",
+                    "clone",
+                    "--depth",
+                    "1",
+                    "--branch",
+                    source.committish,
+                    "--",
+                    source.clone_url,
+                    str(checkout),
+                ],
+                check=True,
+            )
+    except FileNotFoundError as exc:
+        raise CoprAutomationError("git is required for external SCM validation") from exc
+    except subprocess.CalledProcessError as exc:
+        raise CoprAutomationError(
+            f"cannot clone {package_name} from {source.clone_url} at {source.committish}"
+        ) from exc
+
+
+def validate_external_package(package: PackageDefinition, build: bool) -> Path | None:
+    source = package.scm_source
+    if source is None:
+        raise CoprAutomationError(f"{package.name} does not define an external SCM source")
+
+    with tempfile.TemporaryDirectory(prefix=f"copr-{package.name}-scm-") as temp_dir:
+        temp_root = Path(temp_dir)
+        checkout = temp_root / "checkout"
+        clone_scm_source(source, checkout, package.name)
+
+        directory = (checkout / source.subdirectory).resolve()
+        if not directory.is_relative_to(checkout.resolve()) or not directory.is_dir():
+            raise CoprAutomationError(
+                f"{package.name} SCM subdirectory does not exist: {source.subdirectory}"
+            )
+        spec = directory / source.spec
+        specs = sorted(directory.glob("*.spec"))
+        if specs != [spec]:
+            found = ", ".join(path.name for path in specs) or "none"
+            raise CoprAutomationError(
+                f"{package.name} SCM directory must contain exactly {source.spec}; found: {found}"
+            )
+
+        materialized = PackageDefinition(package.name, directory, spec)
+        rpm_name(materialized)
+        validate_sources(materialized)
+        if not build:
+            return None
+
+        run_rpmlint(materialized)
+        makefile = checkout / ".copr" / "Makefile"
+        if not makefile.is_file():
+            raise CoprAutomationError(
+                f"{package.name} external SCM repository is missing .copr/Makefile"
+            )
+        output_dir = temp_root / "output"
+        output_dir.mkdir()
+        command = [
+            "make",
+            "-f",
+            str(makefile),
+            "srpm",
+            f"outdir={output_dir}",
+            f"spec={source.spec}",
+        ]
+        try:
+            subprocess.run(command, cwd=directory, check=True)
+        except FileNotFoundError as exc:
+            raise CoprAutomationError("make is required for external SRPM validation") from exc
+        except subprocess.CalledProcessError as exc:
+            raise CoprAutomationError(
+                f"external SRPM validation failed for {package.name} "
+                f"with exit code {exc.returncode}"
+            ) from exc
+
+        srpms = list(output_dir.glob("*.src.rpm"))
+        if len(srpms) != 1:
+            raise CoprAutomationError(
+                f"expected one external SRPM for {package.name}, found {len(srpms)}"
+            )
+        return Path(srpms[0].name)
+
+
 def validate_packages(packages: Sequence[PackageDefinition], build: bool = True) -> None:
     for package in packages:
+        if package.scm_source is not None:
+            srpm = validate_external_package(package, build)
+            if srpm is not None:
+                print(f"validated {package.name}: {srpm}")
+            else:
+                print(f"validated external layout: {package.name}")
+            continue
+
         rpm_name(package)
         validate_sources(package)
         if build:
@@ -323,6 +515,18 @@ def ensure_project(client: Any, owner: str, config: ProjectConfig) -> Any:
 
 
 def package_source(config: ProjectConfig, package: PackageDefinition) -> dict[str, Any]:
+    if package.scm_source is not None:
+        source = package.scm_source
+        return {
+            "clone_url": source.clone_url,
+            "committish": source.committish,
+            "subdirectory": source.subdirectory,
+            "spec": source.spec,
+            "scm_type": "git",
+            "source_build_method": "make_srpm",
+            "webhook_rebuild": False,
+        }
+
     return {
         "clone_url": config.clone_url,
         "committish": config.branch,

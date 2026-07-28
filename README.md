@@ -34,7 +34,9 @@ packages/
     optional-local-source-or-patch
 ```
 
-The package directory, spec filename, and RPM `Name:` must all match. `Source` and `Patch` entries may point to public HTTPS URLs or files committed beside the spec.
+The package directory, spec filename, and RPM `Name:` must all match. `Source`
+and `Patch` entries may point to public HTTPS URLs or files committed beside the
+spec.
 
 To add a package:
 
@@ -50,6 +52,26 @@ To add a package:
 
 5. Open a pull request. The credential-free validation job runs unit tests, parses every spec, downloads URL sources, and creates source RPMs.
 6. Merge the pull request. The `main` workflow updates and builds only packages changed by that merge.
+
+### External SCM packages
+
+When another repository owns the complete package build process, use
+`packages/<name>/package.toml` instead of copying its spec here:
+
+```toml
+[scm]
+clone_url = "https://github.com/example/project.git"
+committish = "v1.0.0"
+subdirectory = "packaging"
+spec = "example.spec"
+```
+
+The package directory must not also contain a spec. The clone URL must be
+credential-free HTTPS, the committish should be an immutable tag or commit, and
+the external repository must provide `.copr/Makefile` with the same `srpm`
+contract used by this repository. Validation clones the selected revision,
+checks the spec and HTTPS sources, runs rpmlint, and builds its SRPM before
+publication.
 
 Changes to shared files under `.copr/`, `scripts/`, or the workflow rebuild every package. Removing a local package does not delete its COPR package or historical builds; remove those manually in COPR after confirming they are no longer needed.
 
