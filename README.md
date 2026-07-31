@@ -2,7 +2,8 @@
 
 This repository publishes community RPM packages to the public Fedora COPR project `<COPR_OWNER>/copr-fedora`. Pull requests validate package definitions without credentials. Merges to `main` create or verify the COPR project, synchronize changed package recipes, and build them for Fedora 43 and Fedora 44 on x86_64.
 
-No example package is published. The repository starts with automation and a package template only.
+Managed package recipes live under `packages/`. They currently include the
+GitHub Copilot installer helper and the Plazmic Legends companion.
 
 ## 1. Prepare Fedora COPR
 
