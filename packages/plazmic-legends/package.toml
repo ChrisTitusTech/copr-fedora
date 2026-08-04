@@ -1,5 +1,5 @@
 [scm]
 clone_url = "https://github.com/ChrisTitusTech/plazmic-legends.git"
-committish = "f46ede9364f3048e1676c8b92f926dda1f48b854"
+committish = "0203e9623f22466d2f6530a6d8d6480da11e7e06"
 subdirectory = "packaging"
 spec = "plazmic-legends.spec"
