@@ -1,0 +1,5 @@
+[scm]
+clone_url = "https://github.com/ChrisTitusTech/Path.git"
+committish = "e8548b9338dfdd70bcb1f8a60f968ca500e9d500"
+subdirectory = "packaging/fedora"
+spec = "path.spec"
