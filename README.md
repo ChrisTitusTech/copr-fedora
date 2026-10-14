@@ -70,9 +70,11 @@ spec = "example.spec"
 The package directory must not also contain a spec. The clone URL must be
 credential-free HTTPS, the committish should be an immutable tag or commit, and
 the external repository must provide `.copr/Makefile` with the same `srpm`
-contract used by this repository. Validation clones the selected revision,
-checks the spec and HTTPS sources, runs rpmlint, and builds its SRPM before
-publication.
+contract used by this repository. Validation clones the selected revision and builds its SRPM first, so generated
+vendor archives and spec includes are available. It then extracts the SRPM into
+a temporary directory, checks the packaged spec and sources, and runs rpmlint
+on the SRPM before publication. `--no-build` only checks recipes whose sources
+already exist; it cannot validate generated-source recipes.
 
 Changes to shared files under `.copr/`, `scripts/`, or the workflow rebuild every package. Removing a local package does not delete its COPR package or historical builds; remove those manually in COPR after confirming they are no longer needed.
 

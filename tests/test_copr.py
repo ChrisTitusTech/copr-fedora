@@ -147,6 +147,28 @@ spec = "external.spec"
             with self.assertRaisesRegex(copr.CoprAutomationError, "missing"):
                 copr.validate_sources(package)
 
+    @unittest.skipUnless(shutil.which("rpmbuild") and shutil.which("rpmlint"),
+                         "RPM validation tools are required")
+    def test_prepared_srpm_validates_generated_include_and_sources(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source"
+            source.mkdir()
+            spec = source / "hello.spec"
+            text = (ROOT / "tests/fixtures/hello/hello.spec").read_text()
+            text = text.replace("Source0:        hello-1.0.tar.gz",
+                                "Source0:        hello-1.0.tar.gz\nSource1:        generated.inc\n%include %{SOURCE1}")
+            spec.write_text(text)
+            (source / "generated.inc").write_text("Provides: bundled(example) = 1.0\n")
+            with tarfile.open(source / "hello-1.0.tar.gz", "w:gz"):
+                pass
+            subprocess.run(["rpmbuild", "-bs", str(spec), "--define", f"_sourcedir {source}",
+                            "--define", f"_srcrpmdir {root}"], check=True, capture_output=True)
+            srpm = next(root.glob("*.src.rpm"))
+            copr.validate_prepared_srpm("hello", srpm, root / "prepared")
+            with self.assertRaisesRegex(copr.CoprAutomationError, "exactly wrong.spec"):
+                copr.validate_prepared_srpm("wrong", srpm, root / "wrong")
+
     def test_ensure_project_preserves_extra_chroots(self) -> None:
         client = SimpleNamespace(
             project_proxy=mock.Mock(),

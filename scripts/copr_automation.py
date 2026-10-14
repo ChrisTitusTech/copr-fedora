@@ -191,6 +191,8 @@ def rpm_name(package: PackageDefinition) -> str:
         "--srpm",
         "--qf",
         "%{NAME}\\n",
+        "--define",
+        f"_sourcedir {package.directory}",
         str(package.spec),
     ]
     try:
@@ -213,7 +215,7 @@ def rpm_name(package: PackageDefinition) -> str:
 def validate_sources(package: PackageDefinition) -> None:
     try:
         result = subprocess.run(
-            ["rpmspec", "-P", str(package.spec)],
+            ["rpmspec", "--define", f"_sourcedir {package.directory}", "-P", str(package.spec)],
             check=True,
             capture_output=True,
             text=True,
@@ -374,12 +376,13 @@ def validate_external_package(package: PackageDefinition, build: bool) -> Path |
             )
 
         materialized = PackageDefinition(package.name, directory, spec)
-        rpm_name(materialized)
-        validate_sources(materialized)
         if not build:
+            rpm_name(materialized)
+            validate_sources(materialized)
             return None
 
-        run_rpmlint(materialized)
+        # External source builders may generate vendor archives and spec includes.
+        # Validate the complete SRPM they produce, after preparation, not the raw spec.
         makefile = checkout / ".copr" / "Makefile"
         if not makefile.is_file():
             raise CoprAutomationError(
@@ -410,7 +413,29 @@ def validate_external_package(package: PackageDefinition, build: bool) -> Path |
             raise CoprAutomationError(
                 f"expected one external SRPM for {package.name}, found {len(srpms)}"
             )
+        validate_prepared_srpm(package.name, srpms[0], temp_root / "prepared")
         return Path(srpms[0].name)
+
+
+def validate_prepared_srpm(name: str, srpm: Path, prepared: Path) -> None:
+    """Parse against the sources actually shipped, then lint the entire SRPM."""
+    prepared.mkdir()
+    try:
+        subprocess.run([
+            "rpm", "-i", "--nodeps", "--define", f"_sourcedir {prepared}",
+            "--define", f"_specdir {prepared}", str(srpm),
+        ], check=True, capture_output=True, text=True)
+        specs = list(prepared.glob("*.spec"))
+        if len(specs) != 1 or specs[0].name != f"{name}.spec":
+            raise CoprAutomationError(f"SRPM must contain exactly {name}.spec")
+        materialized = PackageDefinition(name, prepared, specs[0])
+        rpm_name(materialized)
+        validate_sources(materialized)
+        subprocess.run(["rpmlint", str(srpm)], check=True)
+    except FileNotFoundError as exc:
+        raise CoprAutomationError("rpm and rpmlint are required for SRPM validation") from exc
+    except subprocess.CalledProcessError as exc:
+        raise CoprAutomationError(f"prepared SRPM validation failed for {name}: {exc}") from exc
 
 
 def validate_packages(packages: Sequence[PackageDefinition], build: bool = True) -> None:
