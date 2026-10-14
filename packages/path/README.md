@@ -1,7 +1,7 @@
 # Path
 
 The manifest pins Path 0.1.0 with packaging fixes at
-`99aa825db8b7f35532ad139c1c3b81a0c013825c`. The source builder resolves its pin after installing Git on a clean COPR worker.
+`f6b8ce8457c63d2fd0a65f365e3c083deef45603`. The source builder resolves its pin after installing Git on a clean COPR worker.
 The `v0.1.0` tag remains at
 `64d261ada0631798d7dbbdd27783a854f1912300`; it is not retagged.
 
