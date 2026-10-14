@@ -329,6 +329,30 @@ spec = "external.spec"
             self.assertIsNone(copr.changed_package_names("a" * 40, "b" * 40))
         self.assertIn("publishing all packages", errors.getvalue())
 
+    def test_publish_cli_prepares_generated_sources_before_submission(self) -> None:
+        events = []
+        def validate(packages, build=True):
+            if not build:
+                raise copr.CoprAutomationError("generated sources are unavailable")
+            events.append("prepared")
+        with (
+            mock.patch.object(copr, "discover_packages", return_value=[]),
+            mock.patch.object(copr, "validate_packages", side_effect=validate),
+            mock.patch.object(copr, "publish", side_effect=lambda *_: events.append("submitted")),
+        ):
+            self.assertEqual(copr.main(["publish", "--all"]), 0)
+        self.assertEqual(events, ["prepared", "submitted"])
+
+    def test_publish_cli_does_not_submit_after_validation_failure(self) -> None:
+        with (
+            mock.patch.object(copr, "discover_packages", return_value=[]),
+            mock.patch.object(copr, "validate_packages", side_effect=copr.CoprAutomationError("bad SRPM")),
+            mock.patch.object(copr, "publish") as publish,
+            redirect_stderr(io.StringIO()),
+        ):
+            self.assertEqual(copr.main(["publish", "--all"]), 1)
+            publish.assert_not_called()
+
     def test_publish_binds_build_proxy_before_waiting(self) -> None:
         build = SimpleNamespace(id=7, state="pending")
         completed = SimpleNamespace(id=7, state="succeeded")

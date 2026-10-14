@@ -687,7 +687,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "validate":
             validate_packages(packages)
         else:
-            validate_packages(packages, build=False)
+            validate_packages(packages)
             publish(packages, args.config)
         return 0
     except CoprAutomationError as exc:
