@@ -84,6 +84,11 @@ Open **Actions > COPR > Run workflow**. Enter one package directory name or `all
 
 The workflow verifies the project before every publishing run. It then adds missing COPR package recipes, updates existing recipes to match this repository, submits the requested builds concurrently, and fails if a build is unsuccessful. Build links and final states are added to the GitHub Actions job summary.
 
+Recipes stored in this repository are pinned to the publishing workflow's
+exact Git commit through `COPR_REPOSITORY_COMMIT`, so COPR builds the same
+sources that passed validation, including manual runs from a branch. External
+SCM packages retain the revision pinned in their own `package.toml`.
+
 ## 5. Install published packages
 
 After at least one package builds successfully, Fedora users can enable the public repository and install it:

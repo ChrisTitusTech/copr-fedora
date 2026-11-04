@@ -244,7 +244,8 @@ spec = "external.spec"
             ),
         )
 
-        source = copr.package_source(copr.load_project_config(), package)
+        config = copr.replace(copr.load_project_config(), branch="a" * 40)
+        source = copr.package_source(config, package)
 
         self.assertEqual(source["clone_url"], "https://github.com/example/external.git")
         self.assertEqual(source["committish"], "v1.2.3")
@@ -353,7 +354,7 @@ spec = "external.spec"
             self.assertEqual(copr.main(["publish", "--all"]), 1)
             publish.assert_not_called()
 
-    def test_publish_binds_build_proxy_before_waiting(self) -> None:
+    def test_publish_pins_repository_commit_and_binds_build_proxy_before_waiting(self) -> None:
         build = SimpleNamespace(id=7, state="pending")
         completed = SimpleNamespace(id=7, state="succeeded")
         client = SimpleNamespace(
@@ -375,7 +376,9 @@ spec = "external.spec"
             return [completed]
 
         with (
-            mock.patch.dict(os.environ, {"COPR_OWNER": "owner"}, clear=False),
+            mock.patch.dict(os.environ, {
+                "COPR_OWNER": "owner", "COPR_REPOSITORY_COMMIT": "a" * 40,
+            }, clear=False),
             mock.patch.object(
                 copr,
                 "load_copr_client",
@@ -385,7 +388,19 @@ spec = "external.spec"
             copr.publish([package], "/tmp/copr-config")
 
         client.package_proxy.edit.assert_called_once()
+        self.assertEqual(
+            client.package_proxy.edit.call_args.args[-1]["committish"], "a" * 40,
+        )
         client.package_proxy.build.assert_called_once_with("owner", "copr-fedora", "hello")
+
+    def test_publish_rejects_invalid_repository_commit_before_mutation(self) -> None:
+        with (
+            mock.patch.dict(os.environ, {"COPR_REPOSITORY_COMMIT": "main"}),
+            mock.patch.object(copr, "load_copr_client") as load_client,
+        ):
+            with self.assertRaisesRegex(copr.CoprAutomationError, "full Git commit SHA"):
+                copr.publish([], "/tmp/copr-config")
+        load_client.assert_not_called()
 
     def test_publish_rejects_owner_mismatch_before_mutation(self) -> None:
         client = SimpleNamespace(

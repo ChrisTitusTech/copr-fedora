@@ -60,6 +60,7 @@ jobs:
     env:
       COPR_CONFIG: ${{ secrets.COPR_CONFIG }}
       COPR_OWNER: ${{ vars.COPR_OWNER }}
+      COPR_REPOSITORY_COMMIT: ${{ github.sha }}
     steps:
       - name: Install COPR client
         run: dnf -y install copr-cli git make python3 python3-copr rpm-build rpmdevtools rpmlint

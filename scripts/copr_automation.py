@@ -14,7 +14,7 @@ import subprocess
 import sys
 import tempfile
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Callable, Iterable, Sequence
 from urllib.parse import urlparse
@@ -624,6 +624,11 @@ def load_copr_client(config_path: str | None) -> tuple[Any, type[BaseException],
 
 def publish(packages: Sequence[PackageDefinition], config_path: str | None) -> None:
     config = load_project_config()
+    repository_commit = os.environ.get("COPR_REPOSITORY_COMMIT", "").strip()
+    if repository_commit:
+        if not COMMIT_SHA_RE.fullmatch(repository_commit):
+            raise CoprAutomationError("COPR_REPOSITORY_COMMIT must be a full Git commit SHA")
+        config = replace(config, branch=repository_commit)
     owner = os.environ.get("COPR_OWNER", "").strip()
     if not owner:
         raise CoprAutomationError("COPR_OWNER is required for publishing")
