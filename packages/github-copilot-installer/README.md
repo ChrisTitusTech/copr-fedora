@@ -1,12 +1,13 @@
 # github-copilot-installer
 
 This COPR recipe builds the MIT-licensed installer helper from the immutable
-`v0.1.0` tag in
+`v0.2.0` tag in
 [`ChrisTitusTech/fedora-copilot`](https://github.com/ChrisTitusTech/fedora-copilot).
 
-The helper downloads GitHub's official GitHub Copilot RPM directly from GitHub
-only when a user explicitly runs it. GitHub's proprietary application,
-AppImage, RPM, and extracted files are not committed here and are not submitted
+The helper installs and updates the latest stable GitHub Copilot desktop and
+CLI releases by default, downloading each directly from GitHub only when a
+user explicitly runs it. GitHub's proprietary applications, AppImage, RPM,
+CLI archives, and extracted files are not committed here and are not submitted
 to or redistributed by COPR.
 
 To publish a helper update:
