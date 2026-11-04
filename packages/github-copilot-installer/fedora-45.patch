@@ -1,0 +1,43 @@
+--- a/scripts/github-copilot-installer
++++ b/scripts/github-copilot-installer
+@@ -125,9 +125,9 @@
+     [[ "$os_id" == "fedora" ]] ||
+         die "unsupported operating system: ${os_id:-unknown}; Fedora is required"
+     case "$os_version" in
+-        43 | 44) ;;
++        43 | 44 | 45) ;;
+         *)
+-            die "unsupported Fedora release: ${os_version:-unknown}; Fedora 43 or 44 is required"
++            die "unsupported Fedora release: ${os_version:-unknown}; Fedora 43, 44, or 45 is required"
+             ;;
+     esac
+     [[ "$architecture" == "$EXPECTED_PACKAGE_ARCH" ]] ||
+--- a/SPEC.md
++++ b/SPEC.md
+@@ -16,7 +16,7 @@
+
+ ## Users
+
+-The intended users run Fedora 43 or Fedora 44 on x86_64 and want:
++The intended users run Fedora 43, Fedora 44, or Fedora 45 on x86_64 and want:
+
+ - A repeatable DNF-mediated installation of GitHub Copilot.
+ - Verification that downloads came from an official GitHub release.
+@@ -82,7 +82,7 @@
+
+ ## Performance and compatibility
+
+-- Supported hosts: Fedora 43 and Fedora 44, x86_64.
++- Supported hosts: Fedora 43, Fedora 44, and Fedora 45, x86_64.
+ - Release metadata queries should complete with ordinary GitHub API latency.
+ - The large upstream RPM is downloaded once per requested install or update and
+   is deleted afterward.
+@@ -101,7 +101,7 @@
+ - Static analysis, formatting, offline black-box tests, RPM build, and rpmlint
+   pass.
+ - The source and binary helper RPMs contain no GitHub application artifacts.
+-- COPR builds succeed for Fedora 43 and Fedora 44 x86_64.
++- COPR builds succeed for Fedora 43, Fedora 44, and Fedora 45 x86_64.
+ - The published helper installs the official application successfully on the
+   Fedora 44 validation host.
+ - The installed executable has no private runpath and resolves GTK 3 and
