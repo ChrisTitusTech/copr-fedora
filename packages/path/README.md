@@ -1,5 +1,10 @@
 # Path
 
+Path is an optional file manager for users who choose to install it. Thunar
+is the default choice on all Fedora releases configured by this repository;
+see the [Thunar setup instructions](../../README.md#file-manager-choice).
+Enabling the COPR alone does not install Path or select it as the default.
+
 The manifest pins Path 0.1.0 with packaging fixes at
 `f6b8ce8457c63d2fd0a65f365e3c083deef45603`. The source builder resolves its pin after installing Git on a clean COPR worker.
 The `v0.1.0` tag remains at

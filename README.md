@@ -1,6 +1,6 @@
 # copr-fedora
 
-This repository publishes community RPM packages to the public Fedora COPR project `<COPR_OWNER>/copr-fedora`. Pull requests validate package definitions without credentials. Merges to `main` create or verify the COPR project, synchronize changed package recipes, and build them for Fedora 43 and Fedora 44 on x86_64.
+This repository publishes community RPM packages to the public Fedora COPR project `<COPR_OWNER>/copr-fedora`. Pull requests validate package definitions without credentials. Merges to `main` create or verify the COPR project, synchronize changed package recipes, and build them for Fedora 43, Fedora 44, and Fedora 45 on x86_64.
 
 Managed package recipes live under `packages/`. They currently include the
 GitHub Copilot installer helper and the Plazmic Legends companion.
@@ -94,6 +94,23 @@ sudo dnf install <package-name>
 ```
 
 Replace `<COPR_OWNER>` with the Fedora username configured in GitHub and `<package-name>` with the RPM name. COPR maintains downloadable RPM metadata automatically after successful builds.
+
+### File manager choice
+
+Thunar is the default file manager choice for desktop setups using this
+repository on every configured Fedora release. Install it from Fedora's
+standard repositories and set the directory handler as your desktop user:
+
+```bash
+sudo dnf install Thunar
+xdg-mime default thunar.desktop inode/directory
+xdg-mime query default inode/directory
+```
+
+The query should print `thunar.desktop`. COPR packages do not configure the
+desktop's file manager automatically. [Path](packages/path/README.md) remains
+an optional alternative that users can install explicitly; enabling this
+COPR does not install it or select it as the default.
 
 ## Behavior and safety
 

@@ -35,7 +35,7 @@ class CoprAutomationTests(unittest.TestCase):
         self.assertEqual(config.name, "copr-fedora")
         self.assertEqual(
             config.chroots,
-            ("fedora-43-x86_64", "fedora-44-x86_64"),
+            ("fedora-43-x86_64", "fedora-44-x86_64", "fedora-45-x86_64"),
         )
         self.assertEqual(config.branch, "main")
 
@@ -184,7 +184,7 @@ spec = "external.spec"
         edit = client.project_proxy.edit.call_args.kwargs
         self.assertEqual(
             edit["chroots"],
-            ["fedora-43-x86_64", "fedora-44-x86_64", "fedora-rawhide-x86_64"],
+            ["fedora-43-x86_64", "fedora-44-x86_64", "fedora-45-x86_64", "fedora-rawhide-x86_64"],
         )
         self.assertFalse(edit["unlisted_on_hp"])
         self.assertFalse(edit["devel_mode"])
