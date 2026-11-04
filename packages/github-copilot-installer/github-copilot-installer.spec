@@ -1,10 +1,12 @@
+%global upstream_commit a1e6bfb096425712cb1958ea21739a4b388fcdfd
+
 Name:           github-copilot-installer
 Version:        0.1.1
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        Verified installer for the GitHub Copilot app on Fedora
 License:        MIT
 URL:            https://github.com/ChrisTitusTech/fedora-copilot
-Source0:        %{url}/archive/refs/tags/v%{version}.tar.gz#/%{name}-%{version}.tar.gz
+Source0:        %{url}/archive/%{upstream_commit}/fedora-copilot-%{upstream_commit}.tar.gz
 # Keep the Fedora 45 compatibility change in COPR until an upstream release includes it.
 Patch0:         fedora-45.patch
 
@@ -26,7 +28,7 @@ verifies its published SHA-256 digest and package identity, and delegates the
 transaction to DNF. The proprietary GitHub Copilot application is not included.
 
 %prep
-%autosetup -n fedora-copilot-%{version} -p1
+%autosetup -n fedora-copilot-%{upstream_commit} -p1
 
 %build
 
@@ -46,6 +48,10 @@ bash tests/test-installer.sh
 %{_mandir}/man1/github-copilot-installer.1*
 
 %changelog
+* Wed Nov 04 2026 Chris Titus Tech <contact@christitus.com> - 0.1.1-3
+- Refresh sources to upstream commit a1e6bfb with updated application update documentation
+- Retain Fedora 45 compatibility
+
 * Wed Nov 04 2026 Chris Titus Tech <contact@christitus.com> - 0.1.1-2
 - Allow Fedora 45 alongside Fedora 43 and 44
 
